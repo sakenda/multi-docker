@@ -1,0 +1,27 @@
+language: generic
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  # Build test image
+  - docker build -t sakenda/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  # Run test image on travis
+  - docker run -e CI=true sakenda/react-test npm test -- --coverage
+
+after_success:
+  # Build production images
+  - docker build -t sakenda/multi-client ./client
+  - docker build -t sakenda/multi-nginx ./nginx
+  - docker build -t sakenda/multi-server ./server
+  - docker build -t sakenda/multi-worker ./worker
+  # Log in to https://hub.docker.com  
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Push to Docker-Hub
+  - docker push sakenda/multi-client
+  - docker push sakenda/multi-nginx
+  - docker push sakenda/multi-server
+  - docker push sakenda/multi-worker
