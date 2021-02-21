@@ -1,0 +1,51 @@
+version: '3'
+services:                                             # Services = Container/Domain
+  postgres:                                           # Container mit Postgres-Datenbank
+    image: "postgres:latest"                          # Name des Images von hub.docker.com
+    environment:                                      # Umgebungsvariablen
+      - POSTGRES_PASSWORD=postgres_password
+  redis:                                              # Container mit Redis-Datenbank
+    image: 'redis:latest'                             # Name des Images von hub.docker.com
+  nginx:                                              # Container der Router-Logik
+    depends_on:                                       # Container abhängigkeiten
+      - api
+      - client
+    restart: always                                   # Verhalten bei Absturz
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports: 
+      - '3050:80'
+  api:                                                # Container der Server-Logik
+    build:
+      dockerfile: Dockerfile.dev                      # Name der Dockerfile, als Template zum bauen des Images
+      context: ./server                               # Kontext des Builds
+    volumes:
+      - /app/node_modules                             # Ordner im Container soll nicht von außerhalb aktualisiert werden
+      - ./server:/app                                 # Referenz Ordner: 'server' (PC) <= 'app' (Container)
+    environment:                                      # Umgebungsvariablen
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+  client:                                             # Container mit der Client-Anwendung
+    stdin_open: true                                  # enable interactivity
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+  worker:                                             # Container mit der Worker-Logik
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
